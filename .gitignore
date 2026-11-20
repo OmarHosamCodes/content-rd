@@ -7,3 +7,8 @@ server.log
 .env
 .superpowers/
 __pycache__/
+
+
+# Added by cargo
+
+/target

@@ -1,0 +1,37 @@
+{
+ "comments": [
+  {
+   "pattern": "Confused about layering order",
+   "user": "sara.m",
+   "text": "بس انا مش فاهمة احط الواقي قبل المرطب ولا بعده؟ كل واحد بيقول حاجة",
+   "likes": 412,
+   "reel_url": "https://www.instagram.com/reel/DAbcdEFGhij/"
+  },
+  {
+   "pattern": "Confused about layering order",
+   "user": "nour_k",
+   "text": "Do I put niacinamide before or after retinol? Nobody explains the order",
+   "likes": 96,
+   "reel_url": "https://www.instagram.com/reel/DAbcdEFGhij/"
+  }
+ ],
+ "gaps": [
+  {
+   "keyword": "best sunscreen for oily skin egypt",
+   "interest": 260,
+   "scores": {
+    "demand": 5,
+    "serp_weakness": 4,
+    "relevance": 5,
+    "ease": 3
+   },
+   "verdict": "Top results are Reddit threads and generic US listicles, nothing local.",
+   "results": [
+    {
+     "title": "Reddit thread",
+     "url": "https://www.reddit.com/r/x"
+    }
+   ]
+  }
+ ]
+}
