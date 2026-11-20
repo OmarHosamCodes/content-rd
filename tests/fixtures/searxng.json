@@ -1,0 +1,110 @@
+{
+ "query": "q",
+ "results": [
+  {
+   "title": "Title 0",
+   "url": "https://site0.com/p",
+   "content": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",
+   "engines": [
+    "google",
+    "bing"
+   ]
+  },
+  {
+   "title": "Title 1",
+   "url": "https://site1.com/p",
+   "content": "snippet 1",
+   "engines": [
+    "duckduckgo"
+   ]
+  },
+  {
+   "title": "Title 2",
+   "url": "https://site2.com/p",
+   "content": "snippet 2",
+   "engines": [
+    "google",
+    "bing"
+   ]
+  },
+  {
+   "title": "Title 3",
+   "url": "https://site3.com/p",
+   "content": "snippet 3",
+   "engines": [
+    "duckduckgo"
+   ]
+  },
+  {
+   "title": "Title 4",
+   "url": "https://site4.com/p",
+   "content": "snippet 4",
+   "engines": [
+    "google",
+    "bing"
+   ]
+  },
+  {
+   "title": "Title 5",
+   "url": "https://site5.com/p",
+   "content": "snippet 5",
+   "engines": [
+    "duckduckgo"
+   ]
+  },
+  {
+   "title": "Title 6",
+   "url": "https://site6.com/p",
+   "content": "snippet 6",
+   "engines": [
+    "google",
+    "bing"
+   ]
+  },
+  {
+   "title": "Title 7",
+   "url": "https://site7.com/p",
+   "content": "snippet 7",
+   "engines": [
+    "duckduckgo"
+   ]
+  },
+  {
+   "title": "Title 8",
+   "url": "https://site8.com/p",
+   "content": "snippet 8",
+   "engines": [
+    "google",
+    "bing"
+   ]
+  },
+  {
+   "title": "Title 9",
+   "url": "https://site9.com/p",
+   "content": "snippet 9",
+   "engines": [
+    "duckduckgo"
+   ]
+  },
+  {
+   "title": "Title 10",
+   "url": "https://site10.com/p",
+   "content": "snippet 10",
+   "engines": [
+    "google",
+    "bing"
+   ]
+  },
+  {
+   "title": "Title 11",
+   "url": "https://site11.com/p",
+   "content": "snippet 11",
+   "engines": [
+    "duckduckgo"
+   ]
+  },
+  {
+   "title": "no url"
+  }
+ ]
+}
