@@ -97,8 +97,11 @@ pub fn collect_reels(bodies: &[String], limit: usize) -> Vec<Reel> {
 pub fn parse_comments(body: &str, contains: &[String]) -> ToolResult<(Vec<Comment>, usize, String)> {
     let v: Value = serde_json::from_str(body).unwrap_or(Value::Null);
     let Some(list) = v.get("comments").and_then(Value::as_array) else {
-        let said = v.get("message").and_then(Value::as_str).unwrap_or("a login page");
-        return Err(format!("Log in to Instagram in the bridge's Chrome window, then retry. (Instagram answered: {said})"));
+        return Err(match v.get("message").and_then(Value::as_str) {
+            // anything else (rate limits, deleted reels) is not fixed by logging in again
+            Some(said) if !said.contains("login") && !said.contains("checkpoint") => format!("Instagram refused: {said}"),
+            said => format!("Log in to Instagram in the bridge's Chrome window, then retry. (Instagram answered: {})", said.unwrap_or("a login page")),
+        });
     };
     let needles: Vec<String> = contains.iter().map(|k| k.to_lowercase()).collect();
     let kept = list
@@ -139,7 +142,12 @@ where
             params.push(("min_id", &out.next_cursor));
         }
         let url = reqwest::Url::parse_with_params(&format!("https://www.instagram.com/api/v1/media/{pk}/comments/"), &params).map_err(|e| e.to_string())?;
-        let (kept, scanned, next) = parse_comments(&fetch(url.into()).await?, contains)?;
+        let (kept, scanned, next) = match fetch(url.into()).await.and_then(|body| parse_comments(&body, contains)) {
+            Ok(page) => page,
+            // keep what was already read; next_cursor still points at the page that failed, so the caller can resume
+            Err(_) if out.scanned > 0 => return Ok(out),
+            Err(e) => return Err(e),
+        };
         out.comments.extend(kept);
         out.scanned += scanned;
         out.next_cursor = next;
@@ -262,6 +270,21 @@ mod tests {
     #[tokio::test]
     async fn login_page_and_fetch_failures_are_errors() {
         assert!(run(vec![Ok("<html>".into())], 300).await.0.unwrap_err().contains("Log in to Instagram"));
-        assert_eq!(run(vec![Ok(page(20, "a")), Err("chrome closed".into())], 300).await.0.unwrap_err(), "chrome closed");
+        assert_eq!(run(vec![Err("chrome closed".into())], 300).await.0.unwrap_err(), "chrome closed");
+    }
+
+    #[tokio::test]
+    async fn failure_after_some_pages_keeps_what_was_read() {
+        let limited = r#"{"message":"Please wait a few minutes before you try again.","status":"fail"}"#;
+        for bad in [Ok(limited.to_string()), Err("chrome closed".to_string())] {
+            let out = run(vec![Ok(page(20, "resume-here")), bad], 300).await.0.unwrap();
+            assert_eq!((out.comments.len(), out.scanned, out.next_cursor.as_str()), (20, 20, "resume-here"));
+        }
+    }
+
+    #[test]
+    fn rate_limit_is_not_reported_as_a_login_problem() {
+        let err = parse_comments(r#"{"message":"Please wait a few minutes before you try again.","status":"fail"}"#, &[]).unwrap_err();
+        assert!(err.contains("Please wait a few minutes") && !err.contains("Log in"), "{err}");
     }
 }

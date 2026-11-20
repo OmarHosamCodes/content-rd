@@ -6,3 +6,4 @@ boards
 .superpowers
 searxng
 docs
+.env

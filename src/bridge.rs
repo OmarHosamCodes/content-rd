@@ -53,7 +53,8 @@ impl Settings {
     pub fn from_vars(var: impl Fn(&str) -> Option<String>) -> ToolResult<Settings> {
         let var = |k: &str| var(k).filter(|v| !v.trim().is_empty());
         let server = var("SERVER_URL").ok_or("SERVER_URL is required, e.g. https://your-app.up.railway.app")?;
-        if !server.starts_with("https://") && !server.starts_with("http://localhost") && !server.starts_with("http://127.0.0.1") {
+        let host = reqwest::Url::parse(&server).ok().and_then(|u| u.host_str().map(str::to_string));
+        if !server.starts_with("https://") && !matches!(host.as_deref(), Some("localhost" | "127.0.0.1")) {
             return Err("SERVER_URL must be https:// (the token is sent with every request)".into());
         }
         let profile = match var("BRIDGE_PROFILE") {
@@ -139,12 +140,12 @@ pub async fn run(s: Settings) -> ToolResult<()> {
     })?;
     let chrome_gone = tokio::spawn(async move { while events.next().await.is_some() {} });
     let page = Arc::new(tokio::sync::Mutex::new(browser.new_page(IG).await.map_err(|e| format!("cannot open Instagram: {e}"))?));
-    let http = reqwest::Client::new();
+    let http = reqwest::Client::builder().timeout(Duration::from_secs(40)).build().map_err(|e| e.to_string())?;
     eprintln!("Bridge connected to {}. Log in to Instagram in the Chrome window if it asks, and leave the window open.", s.server);
 
     let poll = async {
         loop {
-            let res = http.get(format!("{}/bridge/next", s.server)).bearer_auth(&s.token).timeout(Duration::from_secs(40)).send().await;
+            let res = http.get(format!("{}/bridge/next", s.server)).bearer_auth(&s.token).send().await;
             let job: Job = match res {
                 Ok(r) if r.status() == StatusCode::UNAUTHORIZED => return Err("the server rejected MCP_TOKEN".to_string()),
                 Ok(r) if r.status() == StatusCode::OK => match r.json().await {
@@ -165,12 +166,16 @@ pub async fn run(s: Settings) -> ToolResult<()> {
             let (page, http, server, token) = (page.clone(), http.clone(), s.server.clone(), s.token.clone());
             tokio::spawn(async move {
                 eprintln!("job {}: {}", job.id, job.tool);
-                let page = page.lock().await; // one Instagram job at a time, like a person
-                let body = match run_job(&page, &job).await {
+                let result = {
+                    let page = page.lock().await; // one Instagram job at a time, like a person
+                    run_job(&page, &job).await
+                }; // lock released before the upload, so a slow server never stalls the next job
+                let body = match result {
                     Ok(v) => json!({"ok": v}),
                     Err(e) => json!({"err": e}),
                 };
-                if let Err(e) = http.post(format!("{server}/bridge/result/{}", job.id)).bearer_auth(token).json(&body).send().await {
+                let sent = http.post(format!("{server}/bridge/result/{}", job.id)).bearer_auth(token).json(&body).send().await;
+                if let Err(e) = sent.and_then(|r| r.error_for_status()) {
                     eprintln!("job {}: could not send the result: {e}", job.id);
                 }
             });
@@ -204,6 +209,15 @@ mod tests {
         // a token must never travel over plain http to a remote host
         assert!(Settings::from_vars(vars(&[("SERVER_URL", "http://x.up.railway.app"), ("MCP_TOKEN", "t"), ("HOME", "/h")])).err().unwrap().contains("https"));
         assert!(Settings::from_vars(vars(&[("SERVER_URL", "http://localhost:8787"), ("MCP_TOKEN", "t"), ("HOME", "/h")])).is_ok());
+        for sneaky in ["http://localhost.evil.com", "http://127.0.0.1.evil.com:80/x", "http://localhostx"] {
+            let r = Settings::from_vars(move |k| match k {
+                "SERVER_URL" => Some(sneaky.into()),
+                "MCP_TOKEN" => Some("t".into()),
+                "HOME" => Some("/h".into()),
+                _ => None,
+            });
+            assert!(r.is_err(), "{sneaky}");
+        }
     }
 
     #[test]

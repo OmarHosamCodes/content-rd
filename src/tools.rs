@@ -16,8 +16,9 @@ use crate::{State, ToolResult, instagram, search};
 pub const WORKFLOW: &str = "Content R&D workflow. Pick one board name (lowercase-with-dashes) and reuse it in every board_* call.
 
 A) Comment mining (Instagram tools run through the user's local bridge; if they report it offline, tell the user and continue with part B)
+Call find_reels and get_comments one at a time, never in parallel: one browser does the work and parallel calls time out.
 1. Choose 3-5 topics for the industry. For each: find_reels(topic) -> highest-exposure reels.
-2. For the top reels: get_comments(reel_url). Page with next_cursor until ~1000 comments are scanned per reel.
+2. For the top reels: get_comments(reel_url) reads up to 300 comments per call. Page with next_cursor until ~1000 are scanned per reel.
 3. Keep only comments that reveal a real pain, question, objection, desire or misconception. Expect ~5 per 1000.
 4. For each insight, hunt for a pattern: call get_comments on other reels with contains=[keywords of that insight].
 5. Save with board_add_comments(board, pattern, comments) - one call per pattern, pattern = short label of the insight.
@@ -34,7 +35,10 @@ Finish by giving the user the board URL and the top 3 recommendations.";
 fn en() -> String { "en".into() }
 fn us() -> String { "us".into() }
 fn ten() -> usize { 10 }
-fn three_hundred() -> usize { 300 }
+fn three_hundred() -> usize { MAX_COMMENTS_PER_CALL }
+
+/// About 30s of paging in the bridge: keeps one call well inside the relay's job timeout.
+const MAX_COMMENTS_PER_CALL: usize = 300;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct FindReels {
@@ -166,12 +170,12 @@ impl ContentRd {
         out(self.state.relay.call("find_reels", json!({"topic": a.topic, "limit": a.limit.clamp(1, 50)})).await)
     }
 
-    #[tool(description = "Read comments of a reel. Returns {comments:[{user,text,likes,replies}], scanned, next_cursor}. Pass next_cursor back as cursor to keep scrolling. Comments under 3 words are dropped as noise. Runs on the user's local bridge.")]
+    #[tool(description = "Read comments of a reel. Returns {comments:[{user,text,likes,replies}], scanned, next_cursor}. Reads up to 300 comments per call; pass next_cursor back as cursor to keep scrolling. Call one at a time. Comments under 3 words are dropped as noise. Runs on the user's local bridge.")]
     async fn get_comments(&self, Parameters(a): Parameters<GetComments>) -> Result<CallToolResult, McpError> {
         if instagram::shortcode_from_url(&a.reel_url).and_then(instagram::shortcode_to_pk).is_none() {
             return out::<()>(Err("reel_url must look like https://www.instagram.com/reel/<code>/".into()));
         }
-        let args = json!({"reel_url": a.reel_url, "max_comments": a.max_comments.clamp(1, 1000), "cursor": a.cursor, "contains": a.contains});
+        let args = json!({"reel_url": a.reel_url, "max_comments": a.max_comments.clamp(1, MAX_COMMENTS_PER_CALL), "cursor": a.cursor, "contains": a.contains});
         out(self.state.relay.call("get_comments", args).await)
     }
 
@@ -234,5 +238,29 @@ impl ContentRd {
 impl ServerHandler for ContentRd {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().enable_prompts().build()).with_instructions(WORKFLOW)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn comment_jobs_are_small_enough_to_finish_in_time() {
+        let dir = tempfile::tempdir().unwrap();
+        let relay = Arc::new(crate::relay::Relay::new(Duration::from_millis(500), Duration::from_millis(200)));
+        let cfg = crate::Config { port: 0, token: "t".into(), data_dir: dir.path().into(), base_url: "http://localhost".into(), searxng_url: None };
+        let state = Arc::new(State { store: crate::board::Store::new(dir.path().into()), cfg, relay: relay.clone(), http: reqwest::Client::new() });
+        let bridge = tokio::spawn(async move {
+            let job = relay.next_job().await.unwrap();
+            relay.finish(job.id, Ok(json!({})));
+            job.args
+        });
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        let args = GetComments { reel_url: "https://www.instagram.com/reel/Cabc/".into(), max_comments: 1000, cursor: String::new(), contains: vec![] };
+        ContentRd::new(state).get_comments(Parameters(args)).await.unwrap();
+        assert_eq!(bridge.await.unwrap()["max_comments"], 300);
+        assert!(WORKFLOW.contains("one at a time"));
     }
 }
