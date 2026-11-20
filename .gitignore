@@ -1,0 +1,9 @@
+.venv/
+chrome-profile/
+target/
+boards/
+server.log
+*.png
+.env
+.superpowers/
+__pycache__/
