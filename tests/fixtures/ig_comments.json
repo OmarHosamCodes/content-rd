@@ -1,0 +1,5 @@
+{"status":"ok","comment_count":4,"next_min_id":"{\"server_cursor\":\"QVFE\",\"is_server_cursor_inverse\":true}","comments":[
+{"pk":"1","text":"How much does this cost in Egypt?","comment_like_count":12,"child_comment_count":2,"user":{"username":"user1"}},
+{"pk":"2","text":"🔥🔥","comment_like_count":1,"child_comment_count":0,"user":{"username":"user2"}},
+{"pk":"3","text":"انا مش فاهمة احطه قبل المرطب ولا بعده","comment_like_count":40,"user":{"username":"user3"}},
+{"pk":"4","text":null,"user":null}]}
