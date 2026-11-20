@@ -1,5 +1,6 @@
 //! Content R&D MCP server. `content-rd` serves; `content-rd bridge` runs the local Instagram bridge.
 mod board;
+mod bridge;
 mod instagram;
 mod relay;
 mod search;
@@ -121,6 +122,11 @@ async fn main() {
 }
 
 async fn run() -> ToolResult<()> {
+    match std::env::args().nth(1).as_deref() {
+        None => {}
+        Some("bridge") => return bridge::run(bridge::Settings::from_vars(|k| std::env::var(k).ok())?).await,
+        Some(other) => return Err(format!("unknown command '{other}'. Usage: content-rd [bridge]")),
+    }
     let cfg = Config::from_vars(|k| std::env::var(k).ok())?;
     let (port, base) = (cfg.port, cfg.base_url.clone());
     // a comments job pages for about a minute; the bridge long-polls every 25s

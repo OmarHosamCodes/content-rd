@@ -1,0 +1,6 @@
+use_default_settings: true
+server:
+  limiter: false          # private network only: never give this service a public domain
+  bind_address: "::"      # Railway private networking reaches services over IPv6
+search:
+  formats: [html, json]   # json is off by default and the serp tool needs it

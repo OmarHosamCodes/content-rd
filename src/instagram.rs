@@ -118,9 +118,43 @@ pub fn parse_comments(body: &str, contains: &[String]) -> ToolResult<(Vec<Commen
     Ok((kept, list.len(), next))
 }
 
+#[derive(Serialize, Debug)]
+pub struct CommentPage {
+    pub comments: Vec<Comment>,
+    pub scanned: usize,
+    pub next_cursor: String,
+}
+
+/// Scroll a reel's comments from `cursor` until `max` are scanned or Instagram runs out.
+/// `fetch` gets a full URL and returns the response body; in the bridge that is a fetch() inside Chrome.
+pub async fn page_comments<F, Fut>(mut fetch: F, pk: u64, max: usize, cursor: &str, contains: &[String], pause: std::time::Duration) -> ToolResult<CommentPage>
+where
+    F: FnMut(String) -> Fut,
+    Fut: Future<Output = ToolResult<String>>,
+{
+    let mut out = CommentPage { comments: Vec::new(), scanned: 0, next_cursor: cursor.to_string() };
+    loop {
+        let mut params = vec![("can_support_threading", "true"), ("permalink_enabled", "false")];
+        if !out.next_cursor.is_empty() {
+            params.push(("min_id", &out.next_cursor));
+        }
+        let url = reqwest::Url::parse_with_params(&format!("https://www.instagram.com/api/v1/media/{pk}/comments/"), &params).map_err(|e| e.to_string())?;
+        let (kept, scanned, next) = parse_comments(&fetch(url.into()).await?, contains)?;
+        out.comments.extend(kept);
+        out.scanned += scanned;
+        out.next_cursor = next;
+        if scanned == 0 || out.next_cursor.is_empty() || out.scanned >= max {
+            return Ok(out);
+        }
+        tokio::time::sleep(pause).await; // stay gentle: fast paging gets accounts flagged
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn shortcodes() {
@@ -184,5 +218,50 @@ mod tests {
         ] {
             assert!(parse_comments(body, &[]).unwrap_err().contains("Log in to Instagram"), "{body}");
         }
+    }
+
+    fn page(n: usize, next: &str) -> String {
+        let comments: Vec<_> = (0..n).map(|i| serde_json::json!({"text": format!("comment number {i} here"), "user": {"username": "u"}})).collect();
+        serde_json::json!({"status": "ok", "comments": comments, "next_min_id": next}).to_string()
+    }
+
+    async fn run(pages: Vec<ToolResult<String>>, max: usize) -> (ToolResult<CommentPage>, Vec<String>) {
+        let asked = std::cell::RefCell::new(Vec::new());
+        let pages = std::cell::RefCell::new(pages.into_iter());
+        let fetch = |url: String| {
+            asked.borrow_mut().push(url);
+            let next = pages.borrow_mut().next().expect("fetched more pages than expected");
+            async move { next }
+        };
+        let out = page_comments(fetch, 64, max, "", &[], Duration::ZERO).await;
+        (out, asked.into_inner())
+    }
+
+    #[tokio::test]
+    async fn pages_until_the_last_cursor() {
+        let (out, asked) = run(vec![Ok(page(20, "c 1&x")), Ok(page(5, ""))], 300).await;
+        let out = out.unwrap();
+        assert_eq!((out.comments.len(), out.scanned, out.next_cursor.as_str()), (25, 25, ""));
+        assert!(asked[0].starts_with("https://www.instagram.com/api/v1/media/64/comments/?") && !asked[0].contains("min_id"));
+        assert!(asked[1].contains("min_id=c+1%26x") || asked[1].contains("min_id=c%201%26x"), "{}", asked[1]);
+    }
+
+    #[tokio::test]
+    async fn stops_at_max_and_hands_back_the_cursor() {
+        let (out, asked) = run(vec![Ok(page(20, "a")), Ok(page(20, "b")), Ok(page(20, "c"))], 30).await;
+        let out = out.unwrap();
+        assert_eq!((out.scanned, out.next_cursor.as_str(), asked.len()), (40, "b", 2));
+    }
+
+    #[tokio::test]
+    async fn empty_page_with_a_cursor_does_not_loop_forever() {
+        let (out, asked) = run(vec![Ok(page(0, "again"))], 300).await;
+        assert_eq!((out.unwrap().scanned, asked.len()), (0, 1));
+    }
+
+    #[tokio::test]
+    async fn login_page_and_fetch_failures_are_errors() {
+        assert!(run(vec![Ok("<html>".into())], 300).await.0.unwrap_err().contains("Log in to Instagram"));
+        assert_eq!(run(vec![Ok(page(20, "a")), Err("chrome closed".into())], 300).await.0.unwrap_err(), "chrome closed");
     }
 }

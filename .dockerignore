@@ -1,0 +1,8 @@
+target
+.venv
+chrome-profile
+boards
+.git
+.superpowers
+searxng
+docs
