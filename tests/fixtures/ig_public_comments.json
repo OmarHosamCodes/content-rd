@@ -1,0 +1,115 @@
+{
+ "data": {
+  "xig_polaris_media": {
+   "__typename": "XIGPolarisVideoMedia",
+   "comments_connection": {
+    "edges": [
+     {
+      "node": {
+       "pk": "17880905001566755",
+       "is_covered": false,
+       "restricted_status": null,
+       "has_translation": null,
+       "user": {
+        "pk": "1000",
+        "id": "1000",
+        "username": "user0",
+        "is_verified": false
+       },
+       "child_comment_count": null,
+       "text": "where can I buy this in Egypt?",
+       "giphy_media_info": null,
+       "created_at": 1795226246,
+       "parent_comment_id": null,
+       "comment_like_count": 0,
+       "id": "17880905001566755",
+       "__typename": "XIGComment"
+      },
+      "cursor": null
+     },
+     {
+      "node": {
+       "pk": "18148844953584505",
+       "is_covered": false,
+       "restricted_status": null,
+       "has_translation": null,
+       "user": {
+        "pk": "1001",
+        "id": "1001",
+        "username": "user1",
+        "is_verified": false
+       },
+       "child_comment_count": null,
+       "text": "😍😍",
+       "giphy_media_info": null,
+       "created_at": 1795224071,
+       "parent_comment_id": null,
+       "comment_like_count": 0,
+       "id": "18148844953584505",
+       "__typename": "XIGComment"
+      },
+      "cursor": null
+     },
+     {
+      "node": {
+       "pk": "18061801028804056",
+       "is_covered": false,
+       "restricted_status": null,
+       "has_translation": null,
+       "user": {
+        "pk": "1002",
+        "id": "1002",
+        "username": "user2",
+        "is_verified": false
+       },
+       "child_comment_count": 2,
+       "text": "does it work on oily skin, honestly asking",
+       "giphy_media_info": null,
+       "created_at": 1795143931,
+       "parent_comment_id": null,
+       "comment_like_count": 7,
+       "id": "18061801028804056",
+       "__typename": "XIGComment"
+      },
+      "cursor": null
+     },
+     {
+      "node": {
+       "pk": "18136176346707792",
+       "is_covered": false,
+       "restricted_status": null,
+       "has_translation": null,
+       "user": {
+        "pk": "1003",
+        "id": "1003",
+        "username": "user3",
+        "is_verified": false
+       },
+       "child_comment_count": null,
+       "text": "is the price worth it",
+       "giphy_media_info": null,
+       "created_at": 1795082102,
+       "parent_comment_id": null,
+       "comment_like_count": 0,
+       "id": "18136176346707792",
+       "__typename": "XIGComment"
+      },
+      "cursor": null
+     }
+    ],
+    "page_info": {
+     "end_cursor": "{\"is_server_cursor_inverse\":true,\"server_cursor\":\"AQHT5XAPRrtQu7LOtC7wGc-Q65D_fl8fw5oAKrT3LGQIShwC0Gin_Vo2NCivViCZzGf-D1zJhYAT1pOmolnBO4_53A\"}",
+     "has_next_page": true
+    }
+   },
+   "id": "POLARIS_3989102446432402227"
+  }
+ },
+ "extensions": {
+  "server_metadata": {
+   "request_start_time_ms": 1795261246610,
+   "time_at_flush_ms": 1795261246894
+  },
+  "is_final": true
+ }
+}

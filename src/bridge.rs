@@ -111,8 +111,12 @@ async fn get_comments(page: &Page, args: &Value) -> ToolResult<Value> {
     if !page.url().await.ok().flatten().is_some_and(|u| u.starts_with(IG)) {
         goto(page, IG).await?;
     }
-    let fetch = |url: String| async move { call_js::<String>(page, FETCH_JS, &url).await };
-    let out = instagram::page_comments(fetch, pk, max, args["cursor"].as_str().unwrap_or_default(), &contains, Duration::from_secs(1)).await?;
+    let contains = &contains;
+    let fetch = |cursor: String| async move {
+        let body = call_js::<String>(page, FETCH_JS, &instagram::comments_url(pk, &cursor)?).await?;
+        instagram::parse_comments(&body, contains)
+    };
+    let out = instagram::page_comments(fetch, max, args["cursor"].as_str().unwrap_or_default(), Duration::from_secs(1)).await?;
     serde_json::to_value(out).map_err(|e| e.to_string())
 }
 

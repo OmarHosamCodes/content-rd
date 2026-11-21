@@ -1,0 +1,102 @@
+{
+ "data": {
+  "xig_logged_out_popular_search_media_info": {
+   "edges": [
+    {
+     "node": {
+      "__typename": "XIGPolarisVideoMedia",
+      "code": "DWEOzYBDEng",
+      "pk": "3856272284067842528",
+      "user": {
+       "pk": "1000",
+       "id": "1000",
+       "username": "user0",
+       "is_verified": false
+      },
+      "__isXIGPolarisMedia": "XIGPolarisVideoMedia",
+      "caption": {
+       "text": "Each skincare ingredient works differently to take care of the skin #skincare #healthyskin #skincareeducation #skincareroutine #skincareeducation"
+      },
+      "play_count": 4723985,
+      "id": "POLARIS_3856272284067842528"
+     },
+     "cursor": "AQHTF90Dml-2SYsNCwcPFheOY8tvmw3riA6xsyFkaWf62uYJIL7V9HVMMUzWa6Ykav1j"
+    },
+    {
+     "node": {
+      "__typename": "XIGPolarisVideoMedia",
+      "code": "DdO_pOFJ3mi",
+      "pk": "3985402629817072034",
+      "user": {
+       "pk": "1001",
+       "id": "1001",
+       "username": "user1",
+       "is_verified": false
+      },
+      "__isXIGPolarisMedia": "XIGPolarisVideoMedia",
+      "caption": {
+       "text": "levels of skincare 🧼 (college essay review in bio!) #student #life #advice #skincare"
+      },
+      "play_count": 6692612,
+      "id": "POLARIS_3985402629817072034"
+     },
+     "cursor": "AQHThCncZWbUjzwK9QBfx5oUmoL9taJWEtsZzk84Ik3hemcYW_iwewOcD0AR32qm-qTB"
+    },
+    {
+     "node": {
+      "__typename": "XIGPolarisVideoMedia",
+      "code": "DeHgoKNhQiG",
+      "pk": "4001310291173640326",
+      "user": {
+       "pk": "1002",
+       "id": "1002",
+       "username": "user2",
+       "is_verified": false
+      },
+      "__isXIGPolarisMedia": "XIGPolarisVideoMedia",
+      "caption": {
+       "text": "Mix THIS with Vaseline!\n#vaseline #kbeauty #skincare #koreanskincare #vaselinehacks"
+      },
+      "play_count": 12236794,
+      "id": "POLARIS_4001310291173640326"
+     },
+     "cursor": "AQHTxP4nBYNs6-cNSmBtbx4YfpaxMO-Y9SR6Gueb88lkhdK85YTQAj6P9S6LF8tOJGfb"
+    }
+   ],
+   "page_info": {
+    "start_cursor": "AQHT_IJh-AQxkW-ixpet__Z9o7jYlWh2tNe1O2qcyD5D3C1uRNpm9jpz8iC3-S4S16NZ",
+    "end_cursor": "AQHTaqNfNiFUjJboWFKHR4ZeyebJ9yVkL_W8aUpNnxLInI6a6S5rkru2QQJ09t2vy4lr",
+    "has_next_page": true
+   }
+  },
+  "popular_search_related_keywords_connection": {
+   "edges": [
+    {
+     "node": {
+      "query_text": "rice skin care",
+      "__typename": "PolarisPopularSearchRelatedKeyword"
+     },
+     "cursor": "0"
+    },
+    {
+     "node": {
+      "query_text": "mahesh babu skin care",
+      "__typename": "PolarisPopularSearchRelatedKeyword"
+     },
+     "cursor": "1"
+    }
+   ],
+   "page_info": {
+    "end_cursor": "9",
+    "has_next_page": true
+   }
+  }
+ },
+ "extensions": {
+  "server_metadata": {
+   "request_start_time_ms": 1795261245310,
+   "time_at_flush_ms": 1795261246146
+  },
+  "is_final": true
+ }
+}

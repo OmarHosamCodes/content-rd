@@ -55,6 +55,8 @@ pub struct State {
     pub store: board::Store,
     pub relay: Arc<relay::Relay>,
     pub http: reqwest::Client,
+    /// Instagram's logged-out API: no cookie jar, unlike `http`
+    pub ig: reqwest::Client,
 }
 
 async fn require_token(Ax(state): Ax<Arc<State>>, req: Request, next: Next) -> Response {
@@ -102,7 +104,7 @@ pub fn build(cfg: Config, relay: Arc<relay::Relay>) -> ToolResult<Router> {
     let authority = cfg.base_url.split("://").last().unwrap_or_default().to_string();
     let host = authority.split(':').next().unwrap_or_default().to_string();
     let mcp_cfg = StreamableHttpServerConfig::default().with_allowed_hosts([authority, host, "localhost".into(), "127.0.0.1".into()]);
-    let state = Arc::new(State { store: board::Store::new(cfg.data_dir.clone()), cfg, relay, http: search::client()? });
+    let state = Arc::new(State { store: board::Store::new(cfg.data_dir.clone()), cfg, relay, http: search::client()?, ig: instagram::client()? });
     let for_mcp = state.clone();
     let mcp = StreamableHttpService::new(move || Ok(tools::ContentRd::new(for_mcp.clone())), LocalSessionManager::default().into(), mcp_cfg);
     let private = Router::new()
