@@ -75,7 +75,12 @@ pub fn parse_searxng(body: &Value) -> Vec<SerpResult> {
 }
 
 async fn get(http: &Client, url: &str, query: &[(&str, &str)], who: &str) -> ToolResult<String> {
-    let r = http.get(url).query(query).send().await.map_err(|e| format!("{who} is unreachable: {e}"))?;
+    send(http.get(url).query(query), who).await
+}
+
+/// Send a request and return the body, or an error the agent can act on. `who` names the site in errors.
+pub async fn send(req: reqwest::RequestBuilder, who: &str) -> ToolResult<String> {
+    let r = req.send().await.map_err(|e| format!("{who} is unreachable: {e}"))?;
     if !r.status().is_success() {
         return Err(format!("{who} returned {}; wait a minute and retry.", r.status()));
     }
@@ -115,11 +120,15 @@ pub async fn keyword_interest(http: &Client, keywords: &[String], geo: &str, anc
     Ok(out)
 }
 
+/// `language` is like en-US, or "all".
+pub async fn searxng(http: &Client, base: &str, query: &str, language: &str) -> ToolResult<Vec<SerpResult>> {
+    let body = get(http, &format!("{}/search", base.trim_end_matches('/')), &[("q", query), ("format", "json"), ("language", language)], "SearXNG").await?;
+    Ok(parse_searxng(&serde_json::from_str(&body).map_err(|_| "SearXNG sent an unreadable answer.".to_string())?))
+}
+
 pub async fn serp(http: &Client, searxng_url: Option<&str>, keyword: &str, lang: &str, country: &str) -> ToolResult<Vec<SerpResult>> {
     let base = searxng_url.ok_or("SEARXNG_URL is not set on the server, so serp is unavailable.")?;
-    let language = format!("{lang}-{}", country.to_uppercase());
-    let body = get(http, &format!("{}/search", base.trim_end_matches('/')), &[("q", keyword), ("format", "json"), ("language", &language)], "SearXNG").await?;
-    let results = parse_searxng(&serde_json::from_str(&body).map_err(|_| "SearXNG sent an unreadable answer.".to_string())?);
+    let results = searxng(http, base, keyword, &format!("{lang}-{}", country.to_uppercase())).await?;
     if results.is_empty() {
         return Err(format!("No search results for '{keyword}'. The search engines may be rate-limiting; retry in a minute."));
     }

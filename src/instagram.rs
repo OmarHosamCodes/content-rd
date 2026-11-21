@@ -28,7 +28,7 @@ pub struct Comment {
     pub replies: u64,
 }
 
-fn code_char(c: char) -> bool {
+pub(crate) fn code_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '-' || c == '_'
 }
 
@@ -119,22 +119,28 @@ pub fn parse_comments(body: &str, contains: &[String]) -> ToolResult<Page> {
     Ok((keep_comments(list, contains), list.len(), next))
 }
 
-/// Comments under 3 words are noise. `contains` keeps only comments holding any of the words.
-/// Both APIs name the fields the same way.
-fn keep_comments(list: &[Value], contains: &[String]) -> Vec<Comment> {
+/// Comments under 3 words are noise. `contains` keeps only comments holding any of the words. Shared by every platform.
+pub fn keep(list: Vec<Comment>, contains: &[String]) -> Vec<Comment> {
     let needles: Vec<String> = contains.iter().map(|k| k.to_lowercase()).collect();
-    list.iter()
-        .filter_map(|c| {
-            let text = c.get("text")?.as_str()?;
-            let lower = text.to_lowercase();
-            (text.split_whitespace().count() >= 3 && (needles.is_empty() || needles.iter().any(|k| lower.contains(k)))).then(|| Comment {
-                user: c.pointer("/user/username").and_then(Value::as_str).unwrap_or("").to_string(),
-                text: text.to_string(),
-                likes: c.get("comment_like_count").and_then(Value::as_u64).unwrap_or(0),
-                replies: c.get("child_comment_count").and_then(Value::as_u64).unwrap_or(0),
-            })
+    list.into_iter()
+        .filter(|c| {
+            let lower = c.text.to_lowercase();
+            c.text.split_whitespace().count() >= 3 && (needles.is_empty() || needles.iter().any(|k| lower.contains(k)))
         })
         .collect()
+}
+
+/// Both Instagram APIs name the fields the same way.
+fn keep_comments(list: &[Value], contains: &[String]) -> Vec<Comment> {
+    let comments = list.iter().filter_map(|c| {
+        Some(Comment {
+            user: c.pointer("/user/username").and_then(Value::as_str).unwrap_or("").to_string(),
+            text: c.get("text")?.as_str()?.to_string(),
+            likes: c.get("comment_like_count").and_then(Value::as_u64).unwrap_or(0),
+            replies: c.get("child_comment_count").and_then(Value::as_u64).unwrap_or(0),
+        })
+    });
+    keep(comments.collect(), contains)
 }
 
 #[derive(Serialize, Debug)]
@@ -147,8 +153,8 @@ pub struct CommentPage {
 /// One parsed page: (kept comments, scanned count, next cursor; empty on the last page).
 pub type Page = (Vec<Comment>, usize, String);
 
-/// Scroll a reel's comments from `cursor` until `max` are scanned or Instagram runs out.
-/// `fetch` gets a cursor ("" = first page) and returns that page, from the public API or the bridge's Chrome.
+/// Scroll comments from `cursor` until `max` are scanned or the platform runs out.
+/// `fetch` gets a cursor ("" = first page) and returns that page, from any platform's API or the bridge's Chrome.
 pub async fn page_comments<F, Fut>(mut fetch: F, max: usize, cursor: &str, pause: std::time::Duration) -> ToolResult<CommentPage>
 where
     F: FnMut(String) -> Fut,
@@ -168,7 +174,7 @@ where
         if scanned == 0 || out.next_cursor.is_empty() || out.scanned >= max {
             return Ok(out);
         }
-        tokio::time::sleep(pause).await; // stay gentle: fast paging gets accounts flagged
+        tokio::time::sleep(pause).await; // stay gentle: fast paging gets accounts and IPs flagged
     }
 }
 

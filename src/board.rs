@@ -198,7 +198,7 @@ pub fn render(name: &str, board: &Board) -> Markup {
                             @for c in cards {
                                 article.card {
                                     p dir="auto" title=(c.text) { (c.text) }
-                                    footer { span { "@" (c.user) } span { (c.likes) " likes " (link(&c.reel_url, "reel")) } }
+                                    footer { span { "@" (c.user) } span { (c.likes) " likes " (link(&c.reel_url, "source")) } }
                                 }
                             }
                         }

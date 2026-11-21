@@ -1,6 +1,6 @@
 # Content R&D MCP
 
-One prompt -> Instagram comment patterns + ranked search gaps on a board page.
+One prompt -> comment patterns from Instagram, TikTok and YouTube + ranked search gaps on a board page.
 
 - Server (Rust, on Railway): `https://content-rd-production.up.railway.app`
 - MCP endpoint: `/mcp` (streamable HTTP, bearer token)
@@ -21,6 +21,10 @@ Any other agent: add an HTTP MCP server with that URL and header.
 > Run Content R&D for skincare in Egypt (Arabic). Board: skincare-eg
 
 or the `content_rd` MCP prompt. The agent gets the full workflow from the server instructions.
+
+## TikTok and YouTube
+
+Read logged out, nothing to set up. TikTok videos are found through SearXNG (`site:tiktok.com <topic>`, TikTok's own search needs a login), then each video page gives its plays. Logged out, TikTok stops after ~300 top-level comments per video. YouTube search reads the results page; comments come from the web client's own API (no key). If YouTube comments start failing with HTTP 400, bump `YT_CLIENT` in `src/video.rs`.
 
 ## Instagram
 
@@ -46,8 +50,8 @@ When public calls start failing with "doc_id may have rotated", re-harvest the t
 
 | Tool | Does | Runs on |
 | --- | --- | --- |
-| `find_reels` | highest-exposure reels for a topic (12 per topic, by plays) | server, bridge fallback |
-| `get_comments` | paged comments, optional keyword filter for pattern hunting | server, bridge fallback |
+| `find_reels` | highest-exposure videos for a topic on instagram, tiktok or youtube, by plays | server, bridge fallback for Instagram |
+| `get_comments` | paged comments of a reel or video URL from any of the three, optional keyword filter for pattern hunting | server, bridge fallback for Instagram |
 | `board_add_comments` | pin comments under a pattern, uniform cards | server |
 | `keyword_ideas` | Google autocomplete expansion | server |
 | `keyword_interest` | Google Trends demand, relative to an anchor keyword | server |
@@ -68,7 +72,7 @@ When public calls start failing with "doc_id may have rotated", re-harvest the t
 
 ```sh
 cargo test                       # unit tests
-cargo test live -- --ignored     # hits Google autocomplete, Trends and public Instagram
+cargo test live -- --ignored     # hits Google autocomplete, Trends, public Instagram, TikTok and YouTube
 MCP_TOKEN=dev cargo run          # local server on :8787
 railway up --service content-rd  # deploy the server
 railway up searxng --path-as-root --service searxng

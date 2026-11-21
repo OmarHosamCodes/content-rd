@@ -1,0 +1,42 @@
+{
+ "comments": [
+  {
+   "cid": "7290548599942316833",
+   "aweme_id": "7284248855707716896",
+   "text": "Waar is de moisterizer??? I need it",
+   "digg_count": 14,
+   "reply_comment_total": 4,
+   "user": {
+    "unique_id": "user0",
+    "nickname": "User 0"
+   }
+  },
+  {
+   "cid": "7685437795516547873",
+   "aweme_id": "7284248855707716896",
+   "text": "🔥🔥",
+   "digg_count": 2,
+   "reply_comment_total": 0,
+   "user": {
+    "unique_id": "user1",
+    "nickname": "User 1"
+   }
+  },
+  {
+   "cid": "7366616894293771040",
+   "aweme_id": "7284248855707716896",
+   "text": "does this work on dry skin too",
+   "digg_count": 5,
+   "reply_comment_total": 1,
+   "user": {
+    "unique_id": "user2",
+    "nickname": "User 2"
+   }
+  }
+ ],
+ "cursor": 20,
+ "has_more": 1,
+ "total": 165,
+ "status_code": 0,
+ "status_msg": ""
+}

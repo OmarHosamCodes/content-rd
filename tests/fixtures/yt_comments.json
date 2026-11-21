@@ -1,0 +1,141 @@
+{
+ "onResponseReceivedEndpoints": [
+  {
+   "reloadContinuationItemsCommand": {
+    "targetId": "engagement-panel-comments-section",
+    "slot": "RELOAD_CONTINUATION_SLOT_HEADER",
+    "continuationItems": [
+     {
+      "commentsHeaderRenderer": {
+       "countText": {
+        "runs": [
+         {
+          "text": "1,234"
+         }
+        ]
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "reloadContinuationItemsCommand": {
+    "targetId": "engagement-panel-comments-section",
+    "slot": "RELOAD_CONTINUATION_SLOT_BODY",
+    "continuationItems": [
+     {
+      "commentThreadRenderer": {
+       "replies": {
+        "commentRepliesRenderer": {
+         "contents": [
+          {
+           "continuationItemRenderer": {
+            "continuationEndpoint": {
+             "continuationCommand": {
+              "token": "REPLIES_TOKEN"
+             }
+            }
+           }
+          }
+         ]
+        }
+       }
+      }
+     },
+     {
+      "continuationItemRenderer": {
+       "continuationEndpoint": {
+        "continuationCommand": {
+         "token": "NEXT_PAGE_TOKEN",
+         "request": "CONTINUATION_REQUEST_TYPE_WATCH_NEXT"
+        }
+       }
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "frameworkUpdates": {
+  "entityBatchUpdate": {
+   "mutations": [
+    {
+     "entityKey": "EhpVZ3l6N1FXbVpiUHVSUFhtVk0xNEFhQUJBZyAoKAE%3D",
+     "type": "ENTITY_MUTATION_TYPE_REPLACE",
+     "payload": {
+      "commentEntityPayload": {
+       "key": "EhpVZ3l6N1FXbVpiUHVSUFhtVk0xNEFhQUJBZyAoKAE%3D",
+       "properties": {
+        "commentId": "Ugyz7QWmZbPuRPXmVM14AaABAg",
+        "content": {
+         "content": "كريم الاساس ده بيناسب البشرة الدهنية؟"
+        },
+        "publishedTime": "3 hours ago"
+       },
+       "author": {
+        "displayName": "@user0",
+        "channelId": "UCx"
+       },
+       "toolbar": {
+        "likeCountNotliked": "3",
+        "likeCountLiked": "3",
+        "replyCount": ""
+       }
+      }
+     }
+    },
+    {
+     "entityKey": "EhpVZ3otcEw2RTBROVlqUTR2Y1BKNEFhQUJBZyAoKAE%3D",
+     "type": "ENTITY_MUTATION_TYPE_REPLACE",
+     "payload": {
+      "commentEntityPayload": {
+       "key": "EhpVZ3otcEw2RTBROVlqUTR2Y1BKNEFhQUJBZyAoKAE%3D",
+       "properties": {
+        "commentId": "Ugz-pL6E0Q9YjQ4vcPJ4AaABAg",
+        "content": {
+         "content": "😍"
+        },
+        "publishedTime": "3 hours ago"
+       },
+       "author": {
+        "displayName": "@user1",
+        "channelId": "UCx"
+       },
+       "toolbar": {
+        "likeCountNotliked": "1.2K",
+        "likeCountLiked": "1.2K",
+        "replyCount": "14"
+       }
+      }
+     }
+    },
+    {
+     "entityKey": "EhpVZ3lkcURDaDhWTzlxSXJqaWYxNEFhQUJBZyAoKAE%3D",
+     "type": "ENTITY_MUTATION_TYPE_REPLACE",
+     "payload": {
+      "commentEntityPayload": {
+       "key": "EhpVZ3lkcURDaDhWTzlxSXJqaWYxNEFhQUJBZyAoKAE%3D",
+       "properties": {
+        "commentId": "UgydqDCh8VO9qIrjif14AaABAg",
+        "content": {
+         "content": "what serum do you use after this one"
+        },
+        "publishedTime": "3 hours ago"
+       },
+       "author": {
+        "displayName": "@user2",
+        "channelId": "UCx"
+       },
+       "toolbar": {
+        "likeCountNotliked": "0",
+        "likeCountLiked": "0",
+        "replyCount": ""
+       }
+      }
+     }
+    }
+   ]
+  }
+ }
+}

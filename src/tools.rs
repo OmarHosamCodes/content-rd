@@ -11,17 +11,17 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::board::{Card, Gap, Link};
-use crate::{State, ToolResult, instagram, search};
+use crate::{State, ToolResult, instagram, search, video};
 
 pub const WORKFLOW: &str = "Content R&D workflow. Pick one board name (lowercase-with-dashes) and reuse it in every board_* call.
 
-A) Comment mining (Instagram tools read public data without a login; if they fail, they retry through the user's local bridge when it runs. If both fail, tell the user and continue with part B)
+A) Comment mining on Instagram, TikTok and YouTube. All three are read without a login; failed Instagram calls retry through the user's local bridge when it runs. If a platform fails, tell the user and carry on with the others and part B.
 Call find_reels and get_comments one at a time, never in parallel: parallel calls get rate-limited.
-1. Choose 3-5 topics for the industry. For each: find_reels(topic) -> highest-exposure reels. Public search knows only some phrasings: if a topic finds nothing, try a more common or two-word form.
-2. For the top reels: get_comments(reel_url) reads up to 300 comments per call. Page with next_cursor until ~1000 are scanned per reel.
+1. Choose 3-5 topics for the industry. For each, on every platform: find_reels(topic, platform) -> highest-exposure videos. Instagram's public search knows only some phrasings: if a topic finds nothing there, try a more common or two-word form.
+2. For the top videos: get_comments(url) reads up to 300 comments per call. Page with next_cursor until ~1000 are scanned per video (TikTok stops at ~300 without a login).
 3. Keep only comments that reveal a real pain, question, objection, desire or misconception. Expect ~5 per 1000.
-4. For each insight, hunt for a pattern: call get_comments on other reels with contains=[keywords of that insight].
-5. Save with board_add_comments(board, pattern, comments) - one call per pattern, pattern = short label of the insight.
+4. For each insight, hunt for a pattern: call get_comments on other videos, on every platform, with contains=[keywords of that insight]. An insight that repeats across platforms is a strong pattern.
+5. Save with board_add_comments(board, pattern, comments) - one call per pattern, pattern = short label of the insight; set each comment's reel_url to the video it came from.
 
 B) Search gaps
 1. Brainstorm 20+ seed keywords, expand with keyword_ideas.
@@ -40,18 +40,30 @@ fn three_hundred() -> usize { MAX_COMMENTS_PER_CALL }
 /// About 30s of paging (1s pause per ~17-comment page): keeps one call inside client and relay timeouts.
 const MAX_COMMENTS_PER_CALL: usize = 300;
 
+#[derive(Deserialize, JsonSchema, Default, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum Platform {
+    #[default]
+    Instagram,
+    Tiktok,
+    Youtube,
+}
+
 #[derive(Deserialize, JsonSchema)]
 pub struct FindReels {
-    /// Topic or hashtag to search on Instagram
+    /// Topic or hashtag to search
     topic: String,
+    #[serde(default)]
+    platform: Platform,
     #[serde(default = "ten")]
     limit: usize,
 }
 
 #[derive(Deserialize, JsonSchema)]
 pub struct GetComments {
-    /// https://www.instagram.com/reel/<code>/
-    reel_url: String,
+    /// Instagram reel, YouTube video or Short, or TikTok video (https://www.tiktok.com/@user/video/<id>)
+    #[serde(alias = "reel_url")]
+    url: String,
     #[serde(default = "three_hundred")]
     max_comments: usize,
     /// next_cursor from the previous call, to keep scrolling
@@ -108,7 +120,7 @@ pub struct BoardAddComments {
     /// Short label of the insight these comments share
     pattern: String,
     comments: Vec<CommentIn>,
-    /// Reel the comments came from, used when a comment has no reel_url of its own
+    /// Video the comments came from, used when a comment has no reel_url of its own
     #[serde(default)]
     reel_url: String,
 }
@@ -143,6 +155,10 @@ pub struct ContentRdArgs {
     market: Option<String>,
 }
 
+fn value<T: Serialize>(result: ToolResult<T>) -> ToolResult<serde_json::Value> {
+    result.and_then(|v| serde_json::to_value(v).map_err(|e| e.to_string()))
+}
+
 /// Tool failures go back as tool errors the agent can read and act on.
 fn out<T: Serialize>(result: ToolResult<T>) -> Result<CallToolResult, McpError> {
     let block = |s: String| vec![ContentBlock::text(s)];
@@ -165,11 +181,17 @@ impl ContentRd {
         Self { state, tool_router: Self::tool_router(), prompt_router: Self::prompt_router() }
     }
 
-    #[tool(description = "Find the highest-exposure Instagram reels for a topic, most plays first: [{url, plays, user, caption}] (likes/comments only when the bridge answered). Up to 12 per topic.")]
+    #[tool(description = "Find the highest-exposure short videos for a topic on instagram (default), tiktok or youtube, most plays first: [{url, plays, user, caption}], likes/comments when the platform shows them. Up to 12 per topic on Instagram, 10 on TikTok, ~20 on YouTube.")]
     async fn find_reels(&self, Parameters(a): Parameters<FindReels>) -> Result<CallToolResult, McpError> {
-        let limit = a.limit.clamp(1, 50);
-        let direct = instagram::public_reels(&self.state.ig, &a.topic, limit).await.and_then(|r| serde_json::to_value(r).map_err(|e| e.to_string()));
-        out(self.or_bridge(direct, "find_reels", json!({"topic": a.topic, "limit": limit})).await)
+        let (s, limit) = (&self.state, a.limit.clamp(1, 50));
+        out(match a.platform {
+            Platform::Instagram => {
+                let direct = value(instagram::public_reels(&s.public, &a.topic, limit).await);
+                self.or_bridge(direct, "find_reels", json!({"topic": a.topic, "limit": limit})).await
+            }
+            Platform::Youtube => value(video::youtube_reels(&s.public, &a.topic, limit).await),
+            Platform::Tiktok => value(video::tiktok_reels(&s.public, s.cfg.searxng_url.as_deref(), &a.topic, limit).await),
+        })
     }
 
     /// The logged-out API failed: retry once through the user's logged-in bridge, keeping both reasons if that fails too.
@@ -178,16 +200,22 @@ impl ContentRd {
         self.state.relay.call(tool, args).await.map_err(|bridge| format!("{why}\nFallback through the local bridge failed too: {bridge}"))
     }
 
-    #[tool(description = "Read comments of a reel. Returns {comments:[{user,text,likes,replies}], scanned, next_cursor}. Reads up to 300 comments per call; pass next_cursor back as cursor to keep scrolling. Call one at a time. Comments under 3 words are dropped as noise.")]
+    #[tool(description = "Read top-level comments of an Instagram reel, YouTube video or TikTok video. Returns {comments:[{user,text,likes,replies}], scanned, next_cursor}. Reads up to 300 comments per call; pass next_cursor back as cursor (same url) to keep scrolling. Call one at a time. Comments under 3 words are dropped as noise.")]
     async fn get_comments(&self, Parameters(a): Parameters<GetComments>) -> Result<CallToolResult, McpError> {
-        let Some(pk) = instagram::shortcode_from_url(&a.reel_url).and_then(instagram::shortcode_to_pk) else {
-            return out::<()>(Err("reel_url must look like https://www.instagram.com/reel/<code>/".into()));
+        let (s, max) = (&self.state, a.max_comments.clamp(1, MAX_COMMENTS_PER_CALL));
+        if let Some(id) = video::youtube_id(&a.url) {
+            return out(video::youtube_comments(&s.public, id, max, &a.cursor, &a.contains).await);
+        }
+        if let Some(id) = video::tiktok_id(&a.url) {
+            return out(video::tiktok_comments(&s.public, id, max, &a.cursor, &a.contains).await);
+        }
+        let Some(pk) = instagram::shortcode_from_url(&a.url).and_then(instagram::shortcode_to_pk) else {
+            return out::<()>(Err("url must be an Instagram reel (https://www.instagram.com/reel/<code>/), a YouTube video, or a TikTok video (https://www.tiktok.com/@user/video/<id>)".into()));
         };
-        let max = a.max_comments.clamp(1, MAX_COMMENTS_PER_CALL);
-        let direct = instagram::public_comments(&self.state.ig, pk, max, &a.cursor, &a.contains).await.and_then(|p| serde_json::to_value(p).map_err(|e| e.to_string()));
+        let direct = value(instagram::public_comments(&s.public, pk, max, &a.cursor, &a.contains).await);
         // shortcut: a cursor from one API means nothing to the other, so the bridge restarts from the top on fallback
         let cursor = if direct.is_err() { "" } else { &a.cursor };
-        out(self.or_bridge(direct, "get_comments", json!({"reel_url": a.reel_url, "max_comments": max, "cursor": cursor, "contains": a.contains})).await)
+        out(self.or_bridge(direct, "get_comments", json!({"reel_url": a.url, "max_comments": max, "cursor": cursor, "contains": a.contains})).await)
     }
 
     #[tool(description = "Expand seed keywords with what people actually type (Google autocomplete). lang/country like ar/eg.")]
@@ -264,14 +292,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let relay = Arc::new(crate::relay::Relay::new(Duration::from_millis(500), Duration::from_millis(200)));
         let cfg = crate::Config { port: 0, token: "t".into(), data_dir: dir.path().into(), base_url: "http://localhost".into(), searxng_url: None };
-        let state = Arc::new(State { store: crate::board::Store::new(dir.path().into()), cfg, relay: relay.clone(), http: reqwest::Client::new(), ig: dead });
+        let state = Arc::new(State { store: crate::board::Store::new(dir.path().into()), cfg, relay: relay.clone(), http: reqwest::Client::new(), public: dead });
         let bridge = tokio::spawn(async move {
             let job = relay.next_job().await.unwrap();
             relay.finish(job.id, Ok(json!({})));
             job.args
         });
         tokio::time::sleep(Duration::from_millis(20)).await;
-        let args = GetComments { reel_url: "https://www.instagram.com/reel/Cabc/".into(), max_comments: 1000, cursor: "public-cursor".into(), contains: vec![] };
+        let args = GetComments { url: "https://www.instagram.com/reel/Cabc/".into(), max_comments: 1000, cursor: "public-cursor".into(), contains: vec![] };
         let res = ContentRd::new(state).get_comments(Parameters(args)).await.unwrap();
         assert_ne!(res.is_error, Some(true));
         let job = bridge.await.unwrap();
